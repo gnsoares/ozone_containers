@@ -30,7 +30,10 @@ impl SortedList {
         Self { values: vec![] }
     }
 
-    const __hash__: Option<Py<PyAny>> = None;
+    #[classattr]
+    fn __hash__() -> Option<()> {
+        None // type is unhashable since mutable
+    }
 
     fn __iter__(&self, py: Python<'_>) -> SortedListIterator {
         SortedListIterator {
