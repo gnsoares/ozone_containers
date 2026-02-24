@@ -1,4 +1,4 @@
-use pyo3::exceptions::{PyRuntimeError, PyTypeError};
+use pyo3::exceptions::{PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyAny;
 
@@ -28,6 +28,10 @@ impl SortedList {
     #[new]
     fn new() -> Self {
         Self { values: vec![] }
+    }
+
+    fn __contains__(&self, py: Python<'_>, value: Py<PyAny>) -> bool {
+        self.find(value.bind(py), 0, self.values.len()).is_some()
     }
 
     #[classattr]
@@ -66,6 +70,14 @@ impl SortedList {
         self.values.insert(index, value);
         Ok(())
     }
+
+    pub fn index(&self, py: Python<'_>, value: Py<PyAny>) -> PyResult<usize> {
+        if let Some(idx) = self.find(value.bind(py), 0, self.values.len()) {
+            Ok(idx)
+        } else {
+            Err(PyErr::new::<PyValueError, _>("TODO"))
+        }
+    }
 }
 
 impl SortedList {
@@ -81,6 +93,28 @@ impl SortedList {
                     Err(_) => Err(PyErr::new::<PyTypeError, _>("TODO")),
                 }
             }
+        }
+    }
+
+    fn find(&self, bound_value: &Bound<'_, PyAny>, beg: usize, end: usize) -> Option<usize> {
+        if end == 0 || beg >= self.values.len() || beg >= end {
+            return None;
+        }
+        match (beg + end) / 2 {
+            mid if { mid < self.values.len() } => {
+                if bound_value.eq(&self.values[mid]).unwrap_or(false)
+                    && bound_value.is(&self.values[mid])
+                {
+                    Some(mid)
+                } else {
+                    match bound_value.lt(&self.values[mid]) {
+                        Ok(true) => self.find(bound_value, beg, mid),
+                        Ok(false) => self.find(bound_value, mid + 1, end),
+                        Err(_) => None,
+                    }
+                }
+            }
+            _ => None,
         }
     }
 }
